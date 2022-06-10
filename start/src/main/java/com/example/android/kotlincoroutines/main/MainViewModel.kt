@@ -19,8 +19,9 @@ package com.example.android.kotlincoroutines.main
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.example.android.kotlincoroutines.util.BACKGROUND
+import androidx.lifecycle.viewModelScope
 import com.example.android.kotlincoroutines.util.singleArgViewModelFactory
+import kotlinx.coroutines.launch
 
 /**
  * MainViewModel designed to store and manage UI-related data in a lifecycle conscious way. This
@@ -100,18 +101,10 @@ class MainViewModel(private val repository: TitleRepository) : ViewModel() {
     /**
      * Wait one second then update the tap count.
      *
-    private fun updateTaps() {
-    tapCount++
-    BACKGROUND.submit {
-    Thread.sleep(1_000)
-    _taps.postValue("${tapCount} taps")
-    }
-    }
      */
     private fun updateTaps() {
-        // TODO: Convert updateTaps to use coroutines
-        tapCount++
-        BACKGROUND.submit {
+        viewModelScope.launch {
+            tapCount++
             Thread.sleep(1_000)
             _taps.postValue("${tapCount} taps")
         }

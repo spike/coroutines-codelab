@@ -21,6 +21,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.android.kotlincoroutines.util.singleArgViewModelFactory
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -105,7 +106,7 @@ class MainViewModel(private val repository: TitleRepository) : ViewModel() {
     private fun updateTaps() {
         viewModelScope.launch {
             tapCount++
-            Thread.sleep(1_000)
+            delay(1_000)
             _taps.postValue("${tapCount} taps")
         }
     }

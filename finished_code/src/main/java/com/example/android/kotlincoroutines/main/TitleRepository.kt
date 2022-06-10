@@ -61,7 +61,6 @@ class TitleRepository(val network: MainNetwork, val titleDao: TitleDao) {
             throw TitleRefreshError("Unable to refresh title", error)
         }
     }
-
     /**
      * This API is exposed for callers from the Java Programming language.
      *

@@ -98,16 +98,10 @@ class MainViewModel(private val repository: TitleRepository) : ViewModel() {
         refreshTitle()
         updateTaps()
     }
-
-    /**
-     * Wait one second then update the tap count.
-     *
-     */
     private fun updateTaps() {
         viewModelScope.launch {
-            tapCount++
             delay(1_000)
-            _taps.postValue("${tapCount} taps")
+            _taps.value = "${++tapCount} taps"
         }
     }
 
@@ -121,17 +115,31 @@ class MainViewModel(private val repository: TitleRepository) : ViewModel() {
     /**
      * Refresh the title, showing a loading spinner while it refreshes and errors via snackbar.
      */
+    fun refreshTitle() = launchDataLoad {
+        repository.refreshTitle()
+    }
 
-    fun refreshTitle() {
-        try {
-            viewModelScope.launch {
+    /**
+     * Helper function to call a data load function with a loading spinner, errors will trigger a
+     * snackbar.
+     *
+     * By marking `block` as `suspend` this creates a suspend lambda which can call suspend
+     * functions.
+     *
+     * @param block lambda to actually load data. It is called in the viewModelScope. Before calling the
+     *              lambda the loading spinner will display, after completion or error the loading
+     *              spinner will stop
+     */
+    private fun launchDataLoad(block: suspend () -> Unit): Unit {
+        viewModelScope.launch {
+            try {
                 _spinner.value = true
-                repository.refreshTitle()
+                block()
+            } catch (error: TitleRefreshError) {
+                _snackBar.value = error.message
+            } finally {
+                _spinner.value = false
             }
-        } catch (error: TitleRefreshError){
-            _snackBar.postValue(error.message)
-        } finally {
-            _spinner.postValue(false)
         }
     }
 }

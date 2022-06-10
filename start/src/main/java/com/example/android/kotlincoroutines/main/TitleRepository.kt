@@ -18,8 +18,10 @@ package com.example.android.kotlincoroutines.main
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.map
-import com.example.android.kotlincoroutines.util.BACKGROUND
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /**
  * TitleRepository provides an interface to fetch a title or request a new one be generated.
@@ -37,13 +39,10 @@ class TitleRepository(val network: MainNetwork, val titleDao: TitleDao) {
      * This is the main interface for loading a title. The title will be loaded from the offline
      * cache.
      *
-     * Observing this will not cause the title to be refreshed, use [TitleRepository.refreshTitleWithCallbacks]
+     * Observing this will not cause the title to be refreshed, use [TitleRepository.refreshTitle]
      * to refresh the title.
      */
     val title: LiveData<String?> = titleDao.titleLiveData.map { it?.title }
-
-
-    // TODO: Add coroutines-based `fun refreshTitle` here
 
     /**
      * Refresh the current title and save the results to the offline cache.
@@ -52,29 +51,30 @@ class TitleRepository(val network: MainNetwork, val titleDao: TitleDao) {
      * the current tile.
      */
     suspend fun refreshTitle() {
-        // TODO: refresh from network and write to database
-        delay(500)
+        try {
+            val result = withTimeout(5_000) {
+                network.fetchNextTitle()
+            }
+            titleDao.insertTitle(Title(result))
+        } catch (error: Throwable) {
+            throw TitleRefreshError("Unable to refresh title", error)
+        }
     }
-    fun refreshTitleWithCallbacks(titleRefreshCallback: TitleRefreshCallback) {
-        // This request will be run on a background thread by retrofit
-        BACKGROUND.submit {
+    /**
+     * This API is exposed for callers from the Java Programming language.
+     *
+     * The request will run unstructured, which means it won't be able to be cancelled.
+     *
+     * @param titleRefreshCallback a callback
+     */
+    fun refreshTitleInterop(titleRefreshCallback: TitleRefreshCallback) {
+        val scope = CoroutineScope(Dispatchers.Default)
+        scope.launch {
             try {
-                // Make network request using a blocking call
-                val result = network.fetchNextTitle().execute()
-                if (result.isSuccessful) {
-                    // Save it to database
-                    titleDao.insertTitle(Title(result.body()!!))
-                    // Inform the caller the refresh is completed
-                    titleRefreshCallback.onCompleted()
-                } else {
-                    // If it's not successful, inform the callback of the error
-                    titleRefreshCallback.onError(
-                            TitleRefreshError("Unable to refresh title", null))
-                }
-            } catch (cause: Throwable) {
-                // If anything throws an exception, inform the caller
-                titleRefreshCallback.onError(
-                        TitleRefreshError("Unable to refresh title", cause))
+                refreshTitle()
+                titleRefreshCallback.onCompleted()
+            } catch (throwable: Throwable) {
+                titleRefreshCallback.onError(throwable)
             }
         }
     }

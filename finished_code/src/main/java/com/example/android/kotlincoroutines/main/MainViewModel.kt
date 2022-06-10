@@ -98,7 +98,6 @@ class MainViewModel(private val repository: TitleRepository) : ViewModel() {
         refreshTitle()
         updateTaps()
     }
-
     private fun updateTaps() {
         viewModelScope.launch {
             delay(1_000)
